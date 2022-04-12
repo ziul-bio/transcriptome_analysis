@@ -1,0 +1,233 @@
+---
+title: Differencial expression of a long non coding RNA with ballgown
+author: Luiz Carlos Vieira
+date: 18/02/2022
+output: github_document
+---
+
+# Ballgown
+
+Ballgown is a software package designed to facilitate flexible differential expression analysis of RNA-seq data.
+
+## Data description
+
+As input data we use the table counts for Ballgown provenient from stringtie.
+```{r}
+data_description = read.table("pheno_data.txt", header = TRUE, sep = "\t")
+data_description
+```
+
+
+## Libraries
+```{r warning=FALSE, include=FALSE, results="hide"}
+library(ballgown)
+library(genefilter)
+library(dplyr)
+library(xlsx)
+```
+
+
+## Loading data for camparation queen x workers queenless
+
+Making the ballgown object:
+```{r warning=FALSE, include=FALSE}
+bg1 = ballgown(dataDir="ballgown1", samplePattern='SRR', meas='all')
+bg2 = ballgown(dataDir="ballgown2", samplePattern='SRR', meas='all')
+```
+
+The data in the pData has to be in the same order as the samples in bg object
+```{r}
+sampleNames(bg1)
+sampleNames(bg2)
+```
+
+## Creating a pheno data, with the sample names as bg object
+```{r}
+pheno_data1 = read.table("ballgown1/pheno_data.txt", header = TRUE, sep = "\t")
+pheno_data2 = read.table("ballgown2/pheno_data.txt", header = TRUE, sep = "\t")
+```
+
+## Loading pData into the objet bg
+```{r}
+pData(bg1) <- pheno_data1
+pData(bg2) <- pheno_data2
+```
+
+
+## Filter to remove low-abundance genes. 
+
+One common issue with RNA-seq data is that genes often have very few or zero counts. 
+
+Removing all transcripts with a variance across samples lessvthan one:
+```{r}
+bg1 = subset(bg1,"rowVars(texpr(bg1)) > 10", genomesubset=TRUE)
+bg2 = subset(bg2,"rowVars(texpr(bg2)) > 10", genomesubset=TRUE)
+```
+
+
+# Accessing expression data
+
+A ballgown object has six slots: structure, expr, indexes, dirs, mergedDate, and meas.
+
+The expr slot is a list that contains tables of expression data for the genomic features. 
+
+Ballgown implements the following syntax to access components of the expr slot:
+
+e for exon, 
+i for intron, 
+t for transcript,
+g for gene, 
+
+```{r}
+trans_expression1 = texpr(bg1, 'all')
+trans_expression2 = texpr(bg2, 'all')
+
+gene_expression1 = as.data.frame(gexpr(bg1))
+gene_expression2 = as.data.frame(gexpr(bg2))
+```
+
+
+## Finding expressiong of genes of interest
+```{r}
+genes_of_interest = c("MSTRG.8421", "LOC726407")
+
+filter(gene_expression1, row.names(gene_expression1) == genes_of_interest)
+filter(gene_expression2, row.names(gene_expression2) == genes_of_interest)
+```
+
+
+## Creating a list os transcript of interest
+```{r}
+ tx_of_interest <- c("transcript:XM_001120691", "transcript:XM_006566320", "transcript:XM_006566319", "transcript:XM_393800", "MSTRG.8421.2", "MSTRG.8421.3")
+
+dplyr::filter(trans_expression1, t_name %in% tx_of_interest)
+```
+
+
+# Visualization data distribuition
+
+Visualization of the assembled transcripts is done with the plotTranscripts function. 
+
+Transcripts or exons are colored by expression level, (in this case, transcripts expression level):
+
+## Worker x Worker_queenless
+
+get the sample names
+```{r}
+sampleNames(bg1)
+```
+
+
+Transcripts expression level
+```{r, fig.height=8, fig.width=10}
+plotTranscripts(gene='MSTRG.8421', gown=bg1, samples=c("SRR7908186", "SRR7908187", "SRR7908188", "SRR7908189"),
+                meas='FPKM', colorby='transcript', main='Transcripts from gene MSTRG.8421: Worker x Worker_queenless, FPKM')
+```
+
+
+## Worker x Queen
+
+get the sample names
+```{r}
+sampleNames(bg2)
+```
+
+
+Transcripts expression level
+```{r, fig.height=8, fig.width=10}
+plotTranscripts(gene='MSTRG.8421', gown=bg2, samples=c("SRR7908186", "SRR7908187", "SRR7908190", "SRR7908191"),
+                meas='FPKM', colorby='transcript', main='Transcripts from gene MSTRG.8421: Worker x Worker_queenless, FPKM')
+```
+
+
+
+# Side-by-side plots comparing mean abundances between groups (here, 0 and 1):
+
+## worker x worker_queenless
+```{r, fig.height=5, fig.width=10}
+plotMeans('MSTRG.8421', bg1, groupvar='condition', meas='FPKM', colorby='transcript')
+```
+
+## worker x queen
+```{r, fig.height=5, fig.width=10}
+plotMeans('MSTRG.8421', bg2, groupvar='condition', meas='FPKM', colorby='transcript')
+```
+
+
+# statistical results for transcripts: 
+
+
+## Transcripts bg1
+```{r}
+results_transcripts1 = stattest(bg1, feature="transcript", covariate="condition", getFC=TRUE, meas="FPKM")
+
+# Add gene names and gene IDs to the results_transcripts data frame:
+results_transcripts1 = data.frame(geneNames=ballgown::geneNames(bg1), geneIDs=ballgown::geneIDs(bg1), results_transcripts1)
+
+# Sort the results from the smallest P value to the largest:
+results_transcripts1 = arrange(results_transcripts1, pval)
+
+head(results_transcripts1)
+```
+
+
+## Transcripts bg2
+```{r}
+results_transcripts2 = stattest(bg2, feature="transcript", covariate="condition", getFC=TRUE, meas="FPKM")
+
+#Add gene names and gene IDs to the results_transcripts data frame:
+results_transcripts2 = data.frame(geneNames=ballgown::geneNames(bg2), geneIDs=ballgown::geneIDs(bg2), results_transcripts2)
+
+#Sort the results from the smallest P value to the largest:
+results_transcripts2 = arrange(results_transcripts2, pval)
+
+head(results_transcripts2)
+```
+
+
+
+# statistical results at gene level: 
+
+## Genes bg1
+```{r}
+results_genes1 = stattest(bg1, feature="gene", covariate="condition", getFC=TRUE, meas="FPKM")
+
+# Sort the results from the smallest P value to the largest:
+results_genes1 = arrange(results_genes1, pval)
+```
+
+## genes bg2
+```{r}
+results_genes2 = stattest(bg2, feature="gene", covariate="condition", getFC=TRUE, meas="FPKM")
+
+#Sort the results from the smallest P value to the largest:
+results_genes2 = arrange(results_genes2, pval)
+```
+
+
+
+## Saving the files
+```{r}
+# expression table of transcripts
+#writexl::write_xlsx(trans_expression1, "transcript_table_W_x_aW.xlsx")
+#writexl::write_xlsx(trans_expression2, "transcript_table_W_x_Q.xlsx")
+#writexl::write_xlsx(trans_expression3, "transcript_table_aW_x_Q.xlsx")
+
+# statistic results of transcripts
+#writexl::write_xlsx(results_transcripts1, "transcript_stats_W_x_aW.xlsx")
+#writexl::write_xlsx(results_transcripts2, "transcript_stats_W_x_Q.xlsx")
+#writexl::write_xlsx(results_transcripts3, "transcript_stats_aW_x_Q.xlsx")
+```
+
+
+
+## SessionInfo
+```{r sessionInfo, echo=FALSE}
+sessionInfo()
+```
+
+## References
+https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5032908/
+
+https://bioconductor.riken.jp/packages/3.7/bioc/vignettes/ballgown/inst/doc/ballgown.html
+
