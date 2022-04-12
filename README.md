@@ -2,7 +2,7 @@
 
 
 <p align="center">
-  <img src="images/banner.png" >
+  <img src="banner.png" >
 </p>
 
 # Luiz Carlos Vieira
@@ -27,13 +27,13 @@ Therefore other methods can be used to quantify and identify transcript-level di
 
 Here I will describe two different pipelines:  
 
-* Hisat2-stringtie-ballgown  
+* [Hisat2-stringtie](https://github.com/ziul-bio/transcriptome_analysis/blob/main/1.1_hisat2-stringtie-ballgown.md)-[ballgown](https://github.com/ziul-bio/transcriptome_analysis/blob/main/1.2_ballgown.md)  
 
 Used for assembly of transcripts, quantification of gene/transcripts expression levels and differential expression analysis.  
 
-* kallisto-sleuth - Kallisto  
+* [kallisto](https://github.com/ziul-bio/transcriptome_analysis/blob/main/2.1_kallisto_sleuth.md)-[sleuth](https://github.com/ziul-bio/transcriptome_analysis/blob/main/2.2_sleuth.md)  
 
-Is a method for quantification on the transcript (isoform) level, rather than the gene level. Kallisto quantifies a set of FASTA sequences, like a transcript representative genome. Thus it does not perform transcript assembly and it cannot quantify the expression of novel transcripts.  
+Kallisto is a method for quantification on the transcript (isoform) level, rather than the gene level. Kallisto quantifies a set of FASTA sequences, like a transcript representative genome. Thus it does not perform transcript assembly and it cannot quantify the expression of novel transcripts.  
 
 Kallisto can be run in “bootstrap” mode to get uncertainty estimates for the expression levels - a kind of error bar for the quantification process. 
 These bootstrap results are used downstream by sleuth to perform differential expression analysis of isoforms.  
